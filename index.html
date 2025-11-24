@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Notas</title>
+  <style>
+    :root{
+      --bg0:#000; --bg1:#050507;
+      --glass: rgba(28,28,30,.72);
+      --glass-2: rgba(44,44,46,.78);
+      --line: rgba(255,255,255,.08);
+      --text:#fff; --muted:#a1a1a6; --muted-2:#8e8e93;
+      --accent:#ffd60a; --danger:#ff453a; --blue:#0a84ff;
+      --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      --shadow:0 18px 50px rgba(0,0,0,.65);
+      --glow:inset 0 1px 0 rgba(255,255,255,.06), inset 0 -1px 0 rgba(0,0,0,.5);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background:
+        radial-gradient(1200px 800px at 10% -10%, #1a1a1c 0%, transparent 55%),
+        radial-gradient(900px 700px at 110% 10%, #141416 0%, transparent 60%),
+        linear-gradient(180deg, #000, #000);
+      color:var(--text); font-family:var(--font);
+      -webkit-font-smoothing:antialiased; overflow:hidden; touch-action:manipulation; padding:0; background-attachment:fixed;
+    }
+    .glass{
+      background:var(--glass);
+      backdrop-filter:saturate(180%) blur(22px);
+      -webkit-backdrop-filter:saturate(180%) blur(22px);
+      border:1px solid transparent;
+      box-shadow:var(--shadow), var(--glow);
+    }
+    .glass-2{ background:var(--glass-2); }
+
+    .app{position:fixed;inset:0;display:flex;flex-direction:column;background:transparent;}
+    
+  .nav{
+      height:48px;display:flex;align-items:center;gap:6px;padding:0 10px;
+      padding-top: env(safe-area-inset-top);
+      background: rgba(0,0,0,.55);
+      backdrop-filter:saturate(180%) blur(22px);
+      -webkit-backdrop-filter:saturate(180%) blur(22px);
+      z-index:30;
+    }
+
+    .nav .title{font-weight:700;font-size:17px;color:var(--text);margin:0 auto;max-width:60%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .nav .left,.nav .right{display:flex;align-items:center;gap:2px;min-width:72px;}
+    .nav .right{justify-content:flex-end}
+    .nav-btn{background:transparent;border:0;color:var(--accent);font-size:16px;font-weight:600;padding:6px 8px;border-radius:8px;cursor:pointer;}
+    .nav-btn.blue{color:var(--blue);}
+    .icon-btn{
+      width:34px;height:34px;border-radius:999px;border:1px solid transparent;
+      background:rgba(255,255,255,.06);color:var(--text);font-size:15px;cursor:pointer;
+      display:grid;place-items:center;backdrop-filter:saturate(180%) blur(18px);
+    }
+
+    .main{position:relative;flex:1;min-height:0;overflow:hidden;}
+    .screen{position:absolute;inset:0;display:flex;flex-direction:column;min-height:0;transition:transform .28s cubic-bezier(.2,.8,.2,1);}
+    #foldersScreen{
+      transform:translateX(0);z-index:5;
+      background:
+        radial-gradient(1000px 700px at 0% -20%, #151518 0%, transparent 60%),
+        linear-gradient(180deg, #07070a, #000);
+      isolation:isolate;
+    }
+    #notesScreen{transform:translateX(100%);z-index:1;}
+    .show-notes #foldersScreen{transform:translateX(-100%);}
+    .show-notes #notesScreen{transform:translateX(0);}
+
+    .folders-wrap{flex:1;overflow:auto;padding:10px 10px 90px;}
+    .section-title{
+      color:var(--muted);
+      font-weight:800;
+      font-size:12px;
+      letter-spacing:.5px;
+      text-transform:uppercase;
+      padding:10px 18px 6px;
+    }
+    .folder-cell{display:flex;align-items:center;gap:10px;padding:12px 14px;margin-bottom:8px;border-radius:14px;cursor:pointer;position:relative;}
+    .folder-icon{width:24px;height:18px;border-radius:5px;background:var(--accent);box-shadow:inset 0 1px 0 rgba(255,255,255,.35);}
+    .folder-name{font-size:16px;font-weight:700;}
+    .folder-count{margin-left:auto;color:var(--muted-2);font-weight:800;font-size:13px;}
+    .minus{display:none;width:22px;height:22px;border-radius:999px;background:var(--danger);color:#fff;font-weight:900;font-size:16px;align-items:center;justify-content:center;box-shadow:0 6px 14px rgba(0,0,0,.6);}
+    .handle{display:none;color:var(--muted-2);font-weight:900;letter-spacing:2px;margin-left:8px;font-size:14px;opacity:.9;}
+    .edit-mode .minus,.edit-mode .handle{display:flex;}
+
+    .sidebar{position:absolute;top:0;bottom:0;left:0;width:min(86vw,340px);display:flex;flex-direction:column;transform:translateX(-100%);transition:transform .28s cubic-bezier(.2,.8,.2,1);z-index:6;}
+    .sidebar.open{transform:translateX(0);}
+    .overlay{position:absolute;inset:0;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .2s ease;z-index:5;}
+    .overlay.show{opacity:1;pointer-events:auto;}
+    .search-row{padding:8px 10px;display:flex;flex-direction:column;gap:8px;}
+    .search{width:100%;color:var(--text);padding:9px 10px;font-size:15px;border-radius:10px;outline:none;background:rgba(255,255,255,.06);border:1px solid transparent;}
+    .count{font-size:12px;color:var(--muted-2);font-weight:800;padding:0 2px;}
+    .list{flex:1;overflow:auto;padding:8px 8px 90px;}
+    .note-cell{padding:10px 12px;margin-bottom:6px;border-radius:12px;cursor:pointer;border:1px solid transparent;}
+    .note-cell:hover{background:rgba(255,255,255,.04);}
+    .note-title{font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px;}
+    .note-meta{font-size:12px;color:var(--muted-2);font-weight:700;display:flex;gap:6px;align-items:center;}
+    .note-preview{font-size:14px;color:#d1d1d6;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+    .editor{position:absolute;inset:0;display:flex;flex-direction:column;z-index:1;position:relative;}
+    .editor-top{padding:6px 8px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,.06);}
+    .editor-top .date{font-size:12px;color:var(--muted);font-weight:900;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,.06);}
+    .editor-top .actions{margin-left:auto;display:flex;gap:6px;}
+    textarea{
+      flex:1;min-height:0;width:100%;background:transparent;color:var(--text);
+      border:0;outline:none;resize:none;font-family:var(--font);
+      font-size:18px;line-height:1.55;
+      padding:16px 14px calc(180px + env(safe-area-inset-bottom));
+      caret-color:var(--accent);white-space:pre-wrap;
+    }
+    .empty{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--muted);text-align:center;padding:30px;}
+
+    /* FABs */
+    .fab{
+      position:absolute;right:18px;bottom:18px;width:56px;height:56px;border-radius:16px;
+      background:var(--accent);color:#000;font-size:26px;font-weight:900;display:grid;place-items:center;border:0;cursor:pointer;
+      box-shadow:0 14px 38px rgba(0,0,0,.6);z-index:40;
+    }
+    .fab-glass{
+      background:rgba(255,255,255,.10);border:1px solid transparent;color:var(--blue);
+      backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);
+    }
+    /* iOS-like compose FAB */
+    .fab-compose{
+      position:fixed; right:18px; bottom:18px; left:auto; top:auto; z-index:80;
+      width:58px;height:58px;border-radius:18px;color:var(--blue);
+      background:rgba(255,255,255,.12);
+      border:1px solid rgba(255,255,255,.14);
+      box-shadow:0 18px 42px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.12);
+      display:grid;place-items:center;font-size:0;cursor:pointer;
+      backdrop-filter:saturate(180%) blur(20px);
+      -webkit-backdrop-filter:saturate(180%) blur(20px);
+    }
+    .fab-compose svg{width:28px;height:28px;stroke:currentColor}
+    .fab-compose svg{width:28px;height:28px;stroke:currentColor}
+    .fab-compose svg{width:26px;height:26px;stroke:currentColor}
+
+    .sheet-wrap{position:absolute;inset:0;display:none;place-items:end center;z-index:60;background:rgba(0,0,0,.35);}
+    .sheet-wrap.show{display:grid;}
+    .sheet{width:min(96vw,420px);padding:10px;margin:0 0 12px;border-radius:16px;}
+    .sheet .group{border-radius:14px;overflow:hidden;}
+    .sheet .row{padding:14px;font-size:17px;font-weight:600;color:var(--text);display:flex;justify-content:center;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer;background:rgba(255,255,255,.04);}
+    .sheet .row:last-child{border-bottom:0;}
+    .sheet .row.danger{color:var(--danger);}
+    .sheet .row.muted{color:var(--muted);font-weight:700;font-size:14px;cursor:default;}
+    .sheet .cancel{margin-top:8px;border-radius:14px;}
+
+    
+    .main{position:relative;flex:1;min-height:0;overflow:hidden;padding:0;margin:0;}
+    .screen{position:absolute;inset:0;display:flex;flex-direction:column;min-height:0;margin:0;padding:0;}
+    #foldersScreen, #notesScreen{border-radius:0 !important;}
+    .folders-wrap{flex:1;overflow:auto;padding:10px 10px calc(90px + env(safe-area-inset-bottom));}
+    .list{flex:1;overflow:auto;padding:8px 8px calc(90px + env(safe-area-inset-bottom));}
+
+    
+    /* ---- Folders screen iOS26 Liquid Glass ---- */
+    .folders-header{
+      position:sticky; top:0; z-index:3;
+      padding: calc(env(safe-area-inset-top) + 6px) 14px 10px;
+      background: linear-gradient(180deg, rgba(0,0,0,.98), rgba(0,0,0,.7) 70%, rgba(0,0,0,0));
+      backdrop-filter:saturate(180%) blur(24px);
+      -webkit-backdrop-filter:saturate(180%) blur(24px);
+    }
+    .folders-title{
+      font-size:34px; font-weight:800; letter-spacing:.2px;
+      margin:2px 0 8px;
+    }
+    .folders-search{
+      width:100%;
+      color:var(--text);
+      padding:10px 12px;
+      font-size:16px;
+      border-radius:12px;
+      outline:none;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.08);
+      backdrop-filter:saturate(180%) blur(12px);
+      -webkit-backdrop-filter:saturate(180%) blur(12px);
+    }
+    .folder-section{
+      margin:6px 12px 16px;
+      border-radius:14px;
+      overflow:hidden;
+      background: rgba(28,28,30,.38); /* softer material */
+      border:1px solid rgba(255,255,255,.04);
+      backdrop-filter:saturate(180%) blur(26px);
+      -webkit-backdrop-filter:saturate(180%) blur(26px);
+    }
+    .folder-cell{
+      margin:0; border-radius:0; background:transparent; border:0;
+      padding:12px 14px;
+      display:flex; align-items:center; gap:12px;
+    }
+    .folder-cell + .folder-cell{
+      border-top:1px solid rgba(255,255,255,.06);
+    }
+    .folder-icon{
+      width:26px;height:20px;border-radius:6px;
+      background: linear-gradient(180deg, #3a86ff, #0a84ff);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 2px 8px rgba(10,132,255,.4);
+    }
+    .folder-icon.gray{
+      background: linear-gradient(180deg, #8e8e93, #636366);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 2px 6px rgba(0,0,0,.5);
+    }
+    .folder-name{font-size:17px;font-weight:700;flex:1;}
+    .folder-count{color:var(--muted-2);font-weight:800;font-size:14px;margin-left:auto;}
+    .chev{
+      color: var(--muted-2);
+      font-weight:900; font-size:18px; margin-left:4px;
+      transform: translateY(-1px);
+    }
+    .section-title{
+      color:var(--muted);
+      font-weight:800;
+      font-size:12px;
+      letter-spacing:.5px;
+      text-transform:uppercase;
+      padding:10px 18px 6px;
+    }
+
+    @media (min-width:980px){
+      body{overflow:auto;}
+      .app{position:relative;height:100vh;}
+      #foldersScreen{display:none;}
+      #notesScreen{transform:none;position:relative;inset:auto;}
+      .main{display:grid;grid-template-columns:360px 1fr;}
+      .sidebar{position:relative;transform:none !important;width:auto;z-index:1;}
+      .overlay{display:none;}
+      .editor{position:relative;position:relative;}
+    }
+  
+    .sidebar.glass, .editor-top.glass, .folder-cell.glass, .note-cell.glass{
+      border-color: rgba(255,255,255,.06);
+    }
+    .sidebar{
+      background: rgba(0,0,0,.55);
+    }
+    #notesScreen{
+      background: #000;
+    }
+    #foldersScreen{
+      background: #000;
+    }
+
+  
+    #newFolderFab{
+      position:fixed; left:18px; bottom:18px; right:auto; z-index:80;
+      width:56px;height:56px;border-radius:16px;
+      background:rgba(255,255,255,.12);
+      border:1px solid rgba(255,255,255,.14);
+      color:var(--blue);
+      backdrop-filter:saturate(180%) blur(20px);
+      -webkit-backdrop-filter:saturate(180%) blur(20px);
+      box-shadow:0 18px 42px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.12);
+    }
+    #newFolderFab svg{width:26px;height:26px;}
+  
+    .folder-svg{width:26px;height:20px;filter: drop-shadow(0 2px 6px rgba(0,0,0,.55));}
+    .folder-svg.blue{color:#0a84ff;}
+    .folder-svg.gray{color:#8e8e93;}
+  </style>
+</head>
+<body>
+<div class="app" id="appRoot">
+  <div class="nav glass">
+    <div class="left"><button class="nav-btn" id="leftBtn">Carpetas</button></div>
+    <div class="title" id="navTitle">Carpetas</div>
+    <div class="right"><button class="nav-btn blue" id="editBtn">Editar</button></div>
+  </div>
+
+  <div class="main">
+    <section class="screen" id="foldersScreen">
+      <div class="folders-header">
+        <div class="folders-title">Carpetas</div>
+        <input class="folders-search" id="foldersSearch" placeholder="Buscar" />
+      </div>
+      <div class="folders-wrap" id="foldersList"></div>
+      <button class="fab fab-glass" id="newFolderFab" title="Nueva carpeta" aria-label="Nueva carpeta">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M3.5 7.5h6l2 2h9c.6 0 1 .4 1 1v7.5c0 .6-.4 1-1 1h-17c-.6 0-1-.4-1-1V8.5c0-.6.4-1 1-1Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          <path d="M12 12v6M9 15h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </section>
+
+    <section class="screen" id="notesScreen">
+      <aside class="sidebar glass" id="sidebar">
+        <div class="search-row">
+          <input class="search" id="searchInput" placeholder="Buscar" />
+          <div class="count" id="countLabel">0 notas</div>
+        </div>
+        <div class="list" id="list"></div>
+      </aside>
+      <div class="overlay" id="overlay"></div>
+
+      <section class="editor" id="editor">
+        <div class="editor-top glass" id="editorTop" style="display:none;">
+          <div class="date" id="dateLabel"></div>
+          <div class="actions">
+            <!-- Trash icon removed per request -->
+            <button class="icon-btn" id="noteMoreBtn" title="Más opciones" aria-label="Más opciones">•••</button>
+          </div>
+        </div>
+
+        <div class="empty" id="emptyState">
+          <div class="big" style="font-size:20px;font-weight:800;color:#fff;opacity:.9;">Sin nota seleccionada</div>
+          <div>Abre el panel lateral para elegir una nota.</div>
+        </div>
+
+        <button class="fab-compose" id="newNoteFab" title="Nueva nota" aria-label="Nueva nota">
+          <!-- iOS-like square with pencil -->
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="3.5" y="3.5" width="17" height="17" rx="3.2" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M8 16h2.8l6.2-6.2a1.8 1.8 0 0 0-2.6-2.6L8 13.4V16Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+            <path d="M13.6 7.8l2.6 2.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </section>
+    </section>
+  </div>
+
+  <div class="sheet-wrap" id="sheetWrap">
+    <div class="sheet">
+      <div class="group glass-2 glass" id="sheetGroup"></div>
+      <div class="group glass-2 glass cancel">
+        <div class="row" id="sheetCancel">Cancelar</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = "notas_ios_glass_v18";
+  const DEMO_VERSION = 18;
+
+  const makeList = (title, arr) => {
+    // Double newline between items to create visible blank line.
+    return title + "\\n\\n" + arr.map((x,i)=>`${i+1} ${x}`).join("\\n\\n");
+  };
+  const padTo100 = (arr) => {
+    const out = arr.slice(0);
+    let i=0;
+    while(out.length<100){ out.push(arr[i%arr.length] + ` (${out.length+1})`); i++; }
+    return out.slice(0,100);
+  };
+  const normalizeBody = (b) => (b||"").replace(/\\\n/g,"\n").replace(/\\n/g,"\n");
+
+  const baseCities = ["París","Madrid","Roma","Londres","Lisboa","Estambul","Marrakech","Tokio","Nueva York","Berlín","Viena","Praga","Ámsterdam",
+    "Barcelona","Sevilla","Granada","Málaga","Córdoba","Valencia","Zaragoza","Bilbao","San Sebastián","Alicante","Murcia","Palma","Tenerife",
+    "Oporto","Bruselas","Ginebra","Zúrich","Múnich","Hamburgo","Colonia","Frankfurt","Milán","Florencia","Venecia","Nápoles","Turín","Bolonia",
+    "Atenas","Dublín","Edimburgo","Copenhague","Estocolmo","Oslo","Helsinki","Varsovia","Cracovia","Budapest","Bucarest","Sofía","Belgrado","Zagreb",
+    "Doha","Dubái","Abu Dabi","El Cairo","Casablanca","Dakar","Nairobi","Ciudad del Cabo","Bangkok","Singapur","Hanoi","Manila","Seúl","Pekín","Shanghái",
+    "Hong Kong","Taipéi","Sydney","Melbourne","Auckland","Bogotá","Lima","Santiago","Quito","La Paz","Caracas","Brasilia","Río de Janeiro","São Paulo"];
+  const cities100 = padTo100(baseCities);
+
+  const baseCountries = ["España","Francia","Italia","Alemania","Portugal","Reino Unido","Irlanda","Bélgica","Países Bajos","Suiza","Austria","Suecia",
+    "Noruega","Finlandia","Dinamarca","Islandia","Polonia","Chequia","Eslovaquia","Hungría","Rumanía","Bulgaria","Grecia","Turquía","Croacia","Serbia",
+    "Ucrania","Rusia","Marruecos","Argelia","Túnez","Egipto","Nigeria","Ghana","Kenia","Etiopía","Sudáfrica","Estados Unidos","Canadá","México","Colombia",
+    "Venezuela","Ecuador","Perú","Bolivia","Chile","Argentina","Uruguay","Brasil","Australia","Nueva Zelanda","Japón","China","Corea del Sur","India",
+    "Pakistán","Bangladés","Sri Lanka","Nepal","Tailandia","Vietnam","Camboya","Laos","Malasia","Singapur","Indonesia","Filipinas","Arabia Saudí",
+    "Emiratos Árabes Unidos","Qatar","Israel","Jordania","Líbano","Irán","Iraq","Uganda","Tanzania","Angola","Mozambique","Madagascar"];
+  const countries100 = padTo100(baseCountries);
+
+  const baseSongs = ["Billie Jean — Michael Jackson","Bohemian Rhapsody — Queen","Blinding Lights — The Weeknd","Viva la Vida — Coldplay","Shape of You — Ed Sheeran",
+    "Hysteria — Muse","Lose Yourself — Eminem","Titanium — David Guetta ft. Sia","La Flaca — Jarabe de Palo","Mi Gran Noche — Raphael",
+    "Smooth Criminal — Michael Jackson","Numb — Linkin Park","In the End — Linkin Park","Believer — Imagine Dragons","Radioactive — Imagine Dragons",
+    "Hello — Adele","Fix You — Coldplay","Yellow — Coldplay","Bad Guy — Billie Eilish","Levitating — Dua Lipa",
+    "Uptown Funk — Bruno Mars","Smells Like Teen Spirit — Nirvana","Wonderwall — Oasis","Back in Black — AC/DC","Sweet Child O’ Mine — Guns N’ Roses",
+    "Nothing Else Matters — Metallica","Seven Nation Army — The White Stripes","Mr. Brightside — The Killers","Take On Me — a‑ha",
+    "Imagine — John Lennon","Hey Jude — The Beatles","Hotel California — Eagles","Stairway to Heaven — Led Zeppelin","Sultans of Swing — Dire Straits",
+    "Get Lucky — Daft Punk","Bad Romance — Lady Gaga","Starboy — The Weeknd","Corazón Partío — Alejandro Sanz","Despacito — Luis Fonsi","Tití me preguntó — Bad Bunny"];
+  const songs100 = padTo100(baseSongs);
+
+  const baseBrands = ["Mercedes-Benz","BMW","Audi","Volkswagen","Porsche","Ferrari","Lamborghini","Toyota","Honda","Hyundai","Kia","Renault","Peugeot","SEAT","Tesla",
+    "BYD","Volvo","Ford","Chevrolet","Lexus","Nissan","Mazda","Subaru","Mitsubishi","Suzuki","Jaguar","Land Rover","Bentley","Rolls‑Royce","Mini",
+    "Opel","Fiat","Alfa Romeo","Maserati","Citroën","DS","Skoda","Cupra","Dacia","Saab","Chrysler","Dodge","Jeep","GMC","Cadillac","Buick",
+    "Acura","Infiniti","Genesis","Isuzu","Lancia","Abarth","Smart","Polestar","MG","Geely","Chery","Great Wall","Haval","Wuling","NIO","Xpeng",
+    "Rivian","Lucid","Bugatti","McLaren","Aston Martin","Lotus","Morgan","Alpine"];
+  const brands100 = padTo100(baseBrands);
+
+  const seed = {
+    version: DEMO_VERSION,
+    folders: [
+      { id:"f-icloud-notas", name:"Notas", location:"icloud", ts: Date.now()-2*86400000 },
+      { id:"f-icloud-musica", name:"Música", location:"icloud", ts: Date.now()-6*86400000 },
+      { id:"f-icloud-viajes", name:"Viajes", location:"icloud", ts: Date.now()-18*86400000 },
+      { id:"f-icloud-ideas", name:"Ideas", location:"icloud", ts: Date.now()-10*86400000 },
+      { id:"f-iphone-personal", name:"Personal", location:"onmyiphone", ts: Date.now()-35*86400000 },
+      { id:"f-iphone-coches", name:"Coches", location:"onmyiphone", ts: Date.now()-120*86400000 }
+    ],
+    notes: [
+      { folderId:"f-icloud-notas", body: makeList("Marcas de coches (100)", brands100), ts:Date.now()-1*86400000 },
+      { folderId:"f-icloud-musica", body: makeList("Canciones (100)", songs100), ts:Date.now()-2*86400000 },
+      { folderId:"f-icloud-viajes", body: makeList("Ciudades (100)", cities100), ts:Date.now()-3*86400000 },
+      { folderId:"f-icloud-viajes", body: makeList("Países (100)", countries100), ts:Date.now()-4*86400000 },
+
+      { folderId:"f-icloud-ideas", body: "Trucos de magia (30)\\n\\n1 Predicción en Notas\\n\\n2 Forzaje de canción con Inertia\\n\\n3 NFC con revelación\\n\\n4 Carta a teléfono\\n\\n5 Doble realidad\\n\\n6 Pensamiento de palabra\\n\\n7 Rutina con monedas\\n\\n8 Cambio de color\\n\\n9 Ambiciosa\\n\\n10 Triumph\\n\\n11 ACAAN\\n\\n12 Invisible Deck\\n\\n13 Billete a limón\\n\\n14 Anillo a cuerda\\n\\n15 Top Change\\n\\n16 Double lift\\n\\n17 Palm\\n\\n18 Faro\\n\\n19 Out of This World\\n\\n20 Oil & Water\\n\\n21 Torn & Restored\\n\\n22 Control clásico\\n\\n23 Falso corte\\n\\n24 Color Monte\\n\\n25 Sticker transpo\\n\\n26 Open Prediction\\n\\n27 Baraja invisible\\n\\n28 Footprint\\n\\n29 Sombras\\n\\n30 Flash coins", ts:Date.now()-5*86400000 },
+
+      { folderId:"f-icloud-ideas", body: "Películas para ver (25)\\n\\n1 Ahora me ves 1\\n\\n2 Ahora me ves 2\\n\\n3 Interstellar\\n\\n4 Origen\\n\\n5 El truco final\\n\\n6 La gran apuesta\\n\\n7 Mad Max Fury Road\\n\\n8 Blade Runner 2049\\n\\n9 Dune\\n\\n10 Joker\\n\\n11 The Batman\\n\\n12 Logan\\n\\n13 Gladiator\\n\\n14 Matrix\\n\\n15 Inception\\n\\n16 Whiplash\\n\\n17 Parasite\\n\\n18 Seven\\n\\n19 The Prestige\\n\\n20 John Wick\\n\\n21 Top Gun Maverick\\n\\n22 1917\\n\\n23 Oppenheimer\\n\\n24 Spider‑Verse\\n\\n25 Drive", ts:Date.now()-8*86400000 },
+
+      { folderId:"f-iphone-personal", body: "Lista compra (40)\\n\\n1 Leche\\n\\n2 Huevos\\n\\n3 Pan\\n\\n4 Aceite de oliva\\n\\n5 Café\\n\\n6 Azúcar\\n\\n7 Sal\\n\\n8 Pimienta\\n\\n9 Arroz\\n\\n10 Pasta\\n\\n11 Tomate frito\\n\\n12 Atún\\n\\n13 Pollo\\n\\n14 Ternera\\n\\n15 Verduras\\n\\n16 Fruta\\n\\n17 Yogures\\n\\n18 Queso\\n\\n19 Jamón\\n\\n20 Agua\\n\\n21 Refrescos\\n\\n22 Galletas\\n\\n23 Chocolate\\n\\n24 Harina\\n\\n25 Cereales\\n\\n26 Legumbres\\n\\n27 Detergente\\n\\n28 Suavizante\\n\\n29 Papel higiénico\\n\\n30 Servilletas\\n\\n31 Lavavajillas\\n\\n32 Esponjas\\n\\n33 Gel\\n\\n34 Champú\\n\\n35 Pasta dientes\\n\\n36 Desodorante\\n\\n37 Bolsas basura\\n\\n38 Limpiacristales\\n\\n39 Lejía\\n\\n40 Ambientador", ts:Date.now()-6*86400000 },
+
+      { folderId:"f-iphone-coches", body: "Motores Mercedes que molan (20)\\n\\n1 OM642 3.0 V6 diésel\\n\\n2 OM651 2.1 diésel\\n\\n3 M274 2.0 gasolina\\n\\n4 M276 3.5 V6 gasolina\\n\\n5 M157 5.5 V8 biturbo\\n\\n6 M139 2.0 AMG\\n\\n7 OM656 3.0 diésel\\n\\n8 M256 3.0 6L mild‑hybrid\\n\\n9 M177 4.0 V8 biturbo\\n\\n10 M133 2.0 AMG\\n\\n11 OM654 2.0 diésel\\n\\n12 M278 4.7 V8 biturbo\\n\\n13 M272 3.5 V6\\n\\n14 M271 1.8 Kompressor\\n\\n15 OM628 4.0 V8 diésel\\n\\n16 M112 3.2 V6\\n\\n17 M113 5.0 V8\\n\\n18 OM603 3.0 diésel\\n\\n19 M134 histórico\\n\\n20 M120 V12", ts:Date.now()-30*86400000 },
+
+      { folderId:"f-icloud-notas", body: "Pilotos F1 campeones (15)\\n\\n1 Schumacher\\n\\n2 Hamilton\\n\\n3 Verstappen\\n\\n4 Vettel\\n\\n5 Alonso\\n\\n6 Senna\\n\\n7 Prost\\n\\n8 Fangio\\n\\n9 Lauda\\n\\n10 Piquet\\n\\n11 Hakkinen\\n\\n12 Rosberg\\n\\n13 Button\\n\\n14 Räikkönen\\n\\n15 Hill", ts:Date.now()-12*86400000 }
+    ]
+  };
+
+  let folders=[], notes=[], activeFolderId=null, activeNoteId=null, editMode=false;
+
+  const appRoot=document.getElementById("appRoot");
+  const navTitle=document.getElementById("navTitle");
+  const leftBtn=document.getElementById("leftBtn");
+  const editBtn=document.getElementById("editBtn");
+  const foldersList=document.getElementById("foldersList");
+  const newFolderFab=document.getElementById("newFolderFab");
+
+  const foldersSearch = document.getElementById("foldersSearch");
+
+  const sidebar=document.getElementById("sidebar");
+  const overlay=document.getElementById("overlay");
+  const listEl=document.getElementById("list");
+  const searchInput=document.getElementById("searchInput");
+  const countLabel=document.getElementById("countLabel");
+  const editorEl=document.getElementById("editor");
+  const editorTopEl=document.getElementById("editorTop");
+  const emptyStateEl=document.getElementById("emptyState");
+  const dateLabel=document.getElementById("dateLabel");
+  const newNoteFab=document.getElementById("newNoteFab");
+  const noteMoreBtn=document.getElementById("noteMoreBtn");
+  const sheetWrap=document.getElementById("sheetWrap");
+  const sheetGroup=document.getElementById("sheetGroup");
+  const sheetCancel=document.getElementById("sheetCancel");
+
+  function isDesktop(){return window.matchMedia("(min-width: 980px)").matches;}
+  function uid(prefix){return (prefix||"id")+"-"+Math.random().toString(36).slice(2)+Date.now().toString(36);}
+  function nowTs(){return Date.now();}
+  function firstLine(text){const l=normalizeBody(text).split("\n").map(s=>s.trim()).find(Boolean);return l||"Sin título";}
+  function preview(text){const lines=normalizeBody(text).split("\n").map(s=>s.trim()).filter(Boolean);if(lines.length<=1)return(lines[0]||"");return lines.slice(1).join(" ").slice(0,90);}
+  function fmtDate(ts){return new Date(ts).toLocaleDateString("es-ES",{day:"2-digit",month:"short",year:"numeric"});}
+  function sortNotes(arr){return arr.slice().sort((a,b)=>b.updatedAt-a.updatedAt);}
+  function groupLabel(ts){const diff=nowTs()-ts, seven=7*24*60*60*1000;if(diff<=seven)return"ÚLTIMOS 7 DÍAS";return new Date(ts).toLocaleDateString("es-ES",{month:"long",year:"numeric"}).toUpperCase();}
+  function notesInFolder(fid){return notes.filter(n=>n.folderId===fid);}
+
+  function save(){localStorage.setItem(STORAGE_KEY, JSON.stringify({version:DEMO_VERSION, folders, notes}));}
+  function load(){
+    const raw=localStorage.getItem(STORAGE_KEY);
+    if(!raw){
+      folders=seed.folders.map(f=>({id:f.id,name:f.name,location:f.location,createdAt:f.ts,updatedAt:f.ts}));
+      notes=seed.notes.map(n=>({id:uid("n"),folderId:n.folderId,body:n.body,createdAt:n.ts,updatedAt:n.ts}));
+      save(); return;
+    }
+    try{
+      const data=JSON.parse(raw)||{};
+      if(data.version!==DEMO_VERSION){localStorage.removeItem(STORAGE_KEY);return load();}
+      folders=data.folders||[]; notes=(data.notes||[]).map(n=>({...n, body: normalizeBody(n.body)}));
+    }catch(e){folders=[];notes=[];}
+  }
+
+  function showFolders(){
+    appRoot.classList.remove("show-notes");
+    navTitle.textContent="Carpetas";
+    editBtn.style.display="inline-block";
+    newFolderFab.style.display="grid";
+    newNoteFab.style.display="none";
+    closeSidebar();
+    activeFolderId=null;activeNoteId=null;
+    renderFolders();renderEditor();
+  }
+  function showNotes(folderId){
+    activeFolderId=folderId;
+    appRoot.classList.add("show-notes");
+    const f=folders.find(x=>x.id===folderId);
+    navTitle.textContent=f?.name||"Notas";
+    editBtn.style.display="none";
+    newFolderFab.style.display="none";
+    newNoteFab.style.display="grid";
+    activeNoteId=null;
+    renderList();renderEditor();
+    if(!isDesktop()) openSidebar();
+  }
+
+  function renderFolders(){
+    foldersList.innerHTML="";
+    appRoot.classList.toggle("edit-mode", editMode);
+    const fq=(foldersSearch?.value||"").trim().toLowerCase();
+    const icloud=folders.filter(f=>f.location==="icloud").filter(f=>!fq||f.name.toLowerCase().includes(fq));
+    const iphone=folders.filter(f=>f.location==="onmyiphone").filter(f=>!fq||f.name.toLowerCase().includes(fq));
+
+    function section(title,list,isGray){
+      const h=document.createElement("div");h.className="section-title";h.textContent=title;foldersList.appendChild(h);
+      const box=document.createElement("div");box.className="folder-section";foldersList.appendChild(box);
+      list.forEach(f=>{
+        const cell=document.createElement("div");cell.className="folder-cell";
+        const count=notesInFolder(f.id).length;
+        const iconClass=isGray?"gray":"blue";
+        const iconSvg = iconClass==="gray"
+          ? `<svg class="folder-svg gray" viewBox="0 0 24 18" fill="none"><path d="M1.5 4.5h7l2 2h12a1.5 1.5 0 0 1 1.5 1.5v7.5A1.5 1.5 0 0 1 22.5 17.5h-19A1.5 1.5 0 0 1 2 16V6A1.5 1.5 0 0 1 3.5 4.5Z" fill="url(#gGray)"/></svg>`
+          : `<svg class="folder-svg blue" viewBox="0 0 24 18" fill="none"><defs><linearGradient id="gBlue" x1="0" y1="0" x2="0" y2="18"><stop stop-color="#5aa7ff"/><stop offset="1" stop-color="#0a84ff"/></linearGradient><linearGradient id="gGray" x1="0" y1="0" x2="0" y2="18"><stop stop-color="#9a9aa0"/><stop offset="1" stop-color="#6b6b70"/></linearGradient></defs><path d="M1.5 4.5h7l2 2h12a1.5 1.5 0 0 1 1.5 1.5v7.5A1.5 1.5 0 0 1 22.5 17.5h-19A1.5 1.5 0 0 1 2 16V6A1.5 1.5 0 0 1 3.5 4.5Z" fill="url(#gBlue)"/></svg>`;
+        cell.innerHTML=`<div class="minus">−</div>
+          ${iconSvg}
+          <div class="folder-name">${f.name}</div>
+          <div class="folder-count">${count}</div>
+          <div class="chev">›</div>
+          <div class="handle">≡</div>`;
+        cell.querySelector(".minus").addEventListener("click",(e)=>{e.stopPropagation();deleteFolder(f.id);});
+        cell.addEventListener("click",()=>{if(editMode) renameFolder(f.id); else showNotes(f.id);});
+        box.appendChild(cell);
+      });
+    }
+    section("iCLOUD", icloud, false);
+    section("EN MI IPHONE", iphone, true);
+  }
+
+  function showSheet(rows){
+    sheetGroup.innerHTML="";
+    rows.forEach(r=>{
+      const row=document.createElement("div");
+      row.className="row"+(r.danger?" danger":"")+(r.muted?" muted":"");
+      row.textContent=r.label;
+      if(!r.muted) row.addEventListener("click",()=>{hideSheet();r.onClick?.();});
+      sheetGroup.appendChild(row);
+    });
+    sheetWrap.classList.add("show");
+  }
+  function hideSheet(){sheetWrap.classList.remove("show");}
+  sheetCancel.addEventListener("click",hideSheet);
+  sheetWrap.addEventListener("click",(e)=>{if(e.target===sheetWrap)hideSheet();});
+
+  function createFolder(){
+    showSheet([
+      {label:"Nueva carpeta", muted:true},
+      {label:"Crear en iCloud", onClick:()=>createFolderAt("icloud")},
+      {label:"Crear en mi iPhone", onClick:()=>createFolderAt("onmyiphone")},
+    ]);
+  }
+  function createFolderAt(location){
+    const name=prompt("Nombre de la carpeta:");
+    if(!name) return;
+    folders.push({id:uid("f"),name:name.trim(),location,createdAt:nowTs(),updatedAt:nowTs()});
+    save();renderFolders();
+  }
+  function renameFolder(id){
+    const f=folders.find(x=>x.id===id); if(!f) return;
+    const name=prompt("Renombrar carpeta:", f.name);
+    if(!name) return;
+    f.name=name.trim(); f.updatedAt=nowTs();
+    save();renderFolders();
+    if(activeFolderId===id) navTitle.textContent=f.name;
+  }
+  function deleteFolder(id){
+    const f=folders.find(x=>x.id===id); if(!f) return;
+    const count=notesInFolder(id).length;
+    if(!confirm(`¿Eliminar carpeta "${f.name}"?\nSe borrarán ${count} notas.`)) return;
+    notes=notes.filter(n=>n.folderId!==id);
+    folders=folders.filter(x=>x.id!==id);
+    save();
+    if(activeFolderId===id) showFolders(); else renderFolders();
+  }
+
+  function renderList(){
+    const q=searchInput.value.trim().toLowerCase();
+    const filtered=sortNotes(notesInFolder(activeFolderId)).filter(n=>normalizeBody(n.body).toLowerCase().includes(q));
+    listEl.innerHTML="";
+    let last=null;
+    filtered.forEach(n=>{
+      const g=groupLabel(n.updatedAt);
+      if(g!==last){const h=document.createElement("div");h.className="section-title";h.textContent=g;listEl.appendChild(h);last=g;}
+      const cell=document.createElement("div");cell.className="note-cell glass glass-2";
+      cell.addEventListener("click",()=>openNote(n.id));
+      cell.innerHTML=`<div class="note-title">${firstLine(n.body)}</div>
+        <div class="note-meta"><span>${fmtDate(n.updatedAt)}</span><span>•</span><span>${normalizeBody(n.body).length} caracteres</span></div>
+        <div class="note-preview">${preview(n.body)}</div>`;
+      listEl.appendChild(cell);
+    });
+    countLabel.textContent=`${filtered.length} nota${filtered.length!==1?"s":""}`;
+  }
+
+  function clearEditor(){const old=editorEl.querySelector("textarea"); if(old) old.remove();}
+  function renderEditor(){
+    clearEditor();
+    const note=notes.find(n=>n.id===activeNoteId);
+    if(!note){editorTopEl.style.display="none";emptyStateEl.style.display="flex";return;}
+    emptyStateEl.style.display="none";editorTopEl.style.display="flex";dateLabel.textContent=fmtDate(note.updatedAt);
+    const ta=document.createElement("textarea");
+    ta.placeholder="Escribe tu nota…";
+    ta.value=normalizeBody(note.body||"");
+    ta.addEventListener("input",()=>{note.body=ta.value;note.updatedAt=nowTs();save();renderList();dateLabel.textContent=fmtDate(note.updatedAt);});
+    editorEl.insertBefore(ta,newNoteFab); setTimeout(()=>ta.focus(),0);
+  }
+
+  function createNote(){
+    if(!activeFolderId) return;
+    const n={id:uid("n"),folderId:activeFolderId,body:"",createdAt:nowTs(),updatedAt:nowTs()};
+    notes.push(n); save(); activeNoteId=n.id; renderList(); renderEditor(); if(!isDesktop()) closeSidebar();
+  }
+  function openNote(id){activeNoteId=id; renderEditor(); if(!isDesktop()) closeSidebar();}
+  function deleteNote(id){
+    const n=notes.find(x=>x.id===id); if(!n) return;
+    if(!confirm(`¿Eliminar nota?\n"${firstLine(n.body||"")}"`)) return;
+    notes=notes.filter(x=>x.id!==id); activeNoteId=null; save(); renderList(); renderEditor();
+  }
+  function moveNote(id){
+    const n=notes.find(x=>x.id===id); if(!n) return;
+    const name=prompt("Mover a carpeta (nombre exacto):\n"+folders.map(f=>f.name).join("\n"));
+    if(!name) return;
+    const target=folders.find(f=>f.name.toLowerCase()===name.toLowerCase());
+    if(!target){alert("No encontrada."); return;}
+    n.folderId=target.id; n.updatedAt=nowTs(); save();
+    if(target.id!==activeFolderId){activeNoteId=null; renderList(); renderEditor();} else renderList();
+  }
+
+  function openSidebar(){sidebar.classList.add("open");overlay.classList.add("show");}
+  function closeSidebar(){sidebar.classList.remove("open");overlay.classList.remove("show");}
+  overlay.addEventListener("click",closeSidebar);
+
+  leftBtn.addEventListener("click",showFolders);
+  editBtn.addEventListener("click",()=>{editMode=!editMode;editBtn.textContent=editMode?"Hecho":"Editar";renderFolders();});
+  newFolderFab.addEventListener("click",createFolder);
+  newNoteFab.addEventListener("click",createNote);
+  searchInput.addEventListener("input",renderList);
+  foldersSearch?.addEventListener("input",renderFolders);
+  noteMoreBtn.addEventListener("click",()=>{
+    const id=activeNoteId; if(!id) return;
+    showSheet([
+      {label:firstLine(notes.find(n=>n.id===id)?.body||""), muted:true},
+      {label:"Mover a carpeta…", onClick:()=>moveNote(id)},
+      {label:"Duplicar nota", onClick:()=>{
+        const n=notes.find(x=>x.id===id); if(!n) return;
+        notes.push({...n, id:uid("n"), createdAt:nowTs(), updatedAt:nowTs()}); save(); renderList();
+      }},
+      {label:"Copiar texto", onClick:()=>navigator.clipboard?.writeText(notes.find(x=>x.id===id)?.body||"")},
+      {label:"Eliminar nota", danger:true, onClick:()=>deleteNote(id)},
+    ]);
+  });
+
+  load(); showFolders(); renderFolders(); renderEditor();
+  window.addEventListener("resize",()=>{ if(isDesktop()){ if(activeFolderId) appRoot.classList.add("show-notes"); closeSidebar(); }});
+</script>
+</body>
+</html>
